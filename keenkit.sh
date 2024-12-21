@@ -5,7 +5,8 @@ GREEN='\033[1;32m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-USERNAME="spatiumstas"
+USERNAME="madcrow"
+OTA_USERNAME="spatiumstas"
 USER='root'
 REPO="KeenKit"
 SCRIPT="keenkit.sh"
@@ -29,22 +30,22 @@ EOF
   printf "by ${USERNAME}\n"
   printf "${NC}"
   echo ""
-  echo "1. Обновить прошивку из файла"
-  echo "2. Бэкап разделов"
-  echo "3. Бэкап Entware"
-  echo "4. Заменить раздел"
+  echo "1. Update firmware from file"
+  echo "2. Backup partition"
+  echo "3. Backup Entware"
+  echo "4. Replace partition"
   echo "5. OTA Update"
-  echo "6. Заменить сервисные данные"
+  echo "6. Replace service data"
   echo ""
-  echo "88. Удалить используемые пакеты"
-  echo "99. Обновить скрипт"
-  echo "00. Выход"
+  echo "88. Delete packages installed by KeenKit"
+  echo "99. Update the script"
+  echo "00. Exit"
   echo ""
 }
 
 main_menu() {
   print_menu
-  read -p "Выберите действие: " choice
+  read -p "Select an action: " choice
   echo ""
   choice=$(echo "$choice" | tr -d '\032' | tr -d '[A-Z]')
 
@@ -63,7 +64,7 @@ main_menu() {
     99) script_update "main" ;;
     999) script_update "dev" ;;
     *)
-      echo "Неверный выбор. Попробуйте снова."
+      echo "Wrong choice. Try again."
       sleep 1
       main_menu
       ;;
@@ -81,7 +82,7 @@ print_message() {
 
 packages_checker() {
   if ! opkg list-installed | grep -q "^curl"; then
-    print_message "Устанавливаем curl..." "$GREEN"
+    print_message "Installing curl..." "$GREEN"
     opkg update && opkg install curl
     echo ""
   fi
@@ -101,18 +102,18 @@ packages_delete() {
   done
 
   if [ -n "$removed_packages" ]; then
-    print_message "Пакеты успешно удалены:$removed_packages" "$GREEN"
+    print_message "Packages successfully removed: $removed_packages" "$GREEN"
   fi
 
   if [ -n "$failed_packages" ]; then
-    print_message "Следующие пакеты не были удалены из-за зависимостей:$failed_packages" "$RED"
+    print_message "The following packages could not be removed due to dependencies: $failed_packages" "$RED"
   fi
 
   if [ -z "$removed_packages" ] && [ -z "$failed_packages" ]; then
-    print_message "Используемые пакеты не установлены" "$CYAN"
+    print_message "All packages removed" "$CYAN"
   fi
 
-  read -n 1 -s -r -p "Для возврата нажмите любую клавишу..."
+  read -n 1 -s -r -p "Press any key to return..."
   main_menu
 }
 
@@ -127,14 +128,14 @@ identify_external_drive() {
   media_output=$(ndmc -c show media)
 
   if [ -z "$media_output" ]; then
-    echo "Не удалось получить список накопителей."
+    echo "Failed to retrieve the drive list."
     return
   fi
 
   while IFS= read -r line; do
     if echo "$line" | grep -q "name: Media"; then
       media_found=1
-      echo "0. Встроенное хранилище $message2"
+      echo "0. Built-in storage $message2"
     elif [ "$media_found" = "1" ]; then
       if echo "$line" | grep -q "uuid:"; then
         uuid=$(echo "$line" | awk '{print $2}')
@@ -155,7 +156,7 @@ EOF
   if [ -z "$labels" ]; then
     selected_drive="$STORAGE_DIR"
     if [ "$special_message" = "true" ]; then
-      read -p "Найдено только встроенное хранилище $message2, продолжить бэкап? (y/n) " item_rc1
+      read -p "Only found embedded storage $message2, continue backup? (y/n) " item_rc1
       item_rc1=$(echo "$item_rc1" | tr -d ' \n\r')
       case "$item_rc1" in
       y | Y) ;;
@@ -175,7 +176,7 @@ EOF
   else
     selected_drive=$(echo "$uuids" | awk -v choice="$choice" '{split($0, a, " "); print a[choice]}')
     if [ -z "$selected_drive" ]; then
-      print_message "Недопустимый выбор" "$RED"
+      print_message "Invalid selection" "$RED"
       sleep 2
       main_menu
     fi
@@ -197,21 +198,21 @@ check_factory_country() {
   factory=$(echo "$output" | awk '/factory:/ {print $2}')
 
   if [ "$factory" = "RU" ]; then
-    print_message "Страна RU, необходимо изменить на EA" "$CYAN"
+    print_message "Country RU, should be changed to EA" "$CYAN"
     service_data_generator "country"
   fi
 }
 
 backup_config() {
   if has_an_external_storage; then
-    print_message "Обнаружены внешние накопители" "$CYAN"
-    read -p "Создать бэкап startup-config? (y/n) " user_input
+    print_message "External drives have been detected" "$CYAN"
+    read -p "Create a backup of startup-config? (y/n) " user_input
     user_input=$(echo "$user_input" | tr -d ' \n\r')
 
     case "$user_input" in
     y | Y)
       echo ""
-      identify_external_drive "Выберите накопитель для бэкапа:"
+      identify_external_drive "Select the drive to be backed up:"
 
       if [ -n "$selected_drive" ]; then
         date="backup$(date +%Y-%m-%d_%H-%M-%S)"
@@ -223,12 +224,12 @@ backup_config() {
         ndmc -c "copy startup-config $backup_file"
 
         if [ $? -eq 0 ]; then
-          print_message "Startup-config сохранен в $backup_file" "$GREEN"
+          print_message "Startup-config is saved in $backup_file" "$GREEN"
         else
-          print_message "Ошибка при сохранении бэкапа" "$RED"
+          print_message "Error while saving backup" "$RED"
         fi
       else
-        echo "Бэкап не выполнен, накопитель не выбран."
+        echo "Backup not performed, drive not selected."
       fi
       ;;
     *)
@@ -249,10 +250,10 @@ script_update() {
     cd $OPT_DIR/bin
     ln -sf $OPT_DIR/$SCRIPT $OPT_DIR/bin/KeenKit
     ln -sf $OPT_DIR/$SCRIPT $OPT_DIR/bin/keenkit
-    print_message "Скрипт успешно обновлён" "$GREEN"
+    print_message "The script has been successfully updated" "$GREEN"
     $OPT_DIR/$SCRIPT post_update
   else
-    print_message "Ошибка при скачивании скрипта" "$RED"
+    print_message "Error downloading the script" "$RED"
   fi
 }
 
@@ -273,8 +274,8 @@ post_update() {
 
 internet_checker() {
   if ! ping -c 1 -W 2 8.8.8.8 >/dev/null 2>&1; then
-    print_message "Нет доступа к интернету. Проверьте подключение." "$RED"
-    read -n 1 -s -r -p "Для возврата нажмите любую клавишу..."
+    print_message "No Internet access. Check connection." "$RED"
+    read -n 1 -s -r -p "Press any key to return..."
     main_menu
   fi
 }
@@ -311,36 +312,36 @@ ota_update() {
   REPO="osvault"
   packages_checker
   internet_checker
-  DIRS=$(curl -s "https://api.github.com/repos/$USERNAME/$REPO/contents/" | grep -Po '"name":.*?[^\\]",' | awk -F'"' '{print $4}' | grep -v '^\.\(github\)$')
+  DIRS=$(curl -s "https://api.github.com/repos/$OTA_USERNAME/$REPO/contents/" | grep -Po '"name":.*?[^\\]",' | awk -F'"' '{print $4}' | grep -v '^\.\(github\)$')
 
-  echo "Доступные модели:"
+  echo "Available models:"
   i=1
   IFS=$'\n'
   for DIR in $DIRS; do
     printf "${CYAN}$i. $DIR${NC}\n"
     i=$((i + 1))
   done
-  printf "${CYAN}00. Выход в главное меню\n${NC}"
+  printf "${CYAN}00. Exit to the main menu\n${NC}"
   echo ""
-  read -p "Выберите модель: " DIR_NUM
+  read -p "Select a model: " DIR_NUM
   if [ "$DIR_NUM" = "00" ]; then
     main_menu
   fi
   DIR=$(echo "$DIRS" | sed -n "${DIR_NUM}p")
 
-  BIN_FILES=$(curl -s "https://api.github.com/repos/$USERNAME/$REPO/contents/$(echo "$DIR" | sed 's/ /%20/g')" | grep -Po '"name":.*?[^\\]",' | awk -F'"' '{print $4}' | grep ".bin")
+  BIN_FILES=$(curl -s "https://api.github.com/repos/$OTA_USERNAME/$REPO/contents/$(echo "$DIR" | sed 's/ /%20/g')" | grep -Po '"name":.*?[^\\]",' | awk -F'"' '{print $4}' | grep ".bin")
   if [ -z "$BIN_FILES" ]; then
-    printf "${RED}В директории $DIR нет файлов.${NC}\n"
+    printf "${RED}There are no files in the $DIR directory.${NC}\n"
   else
-    printf "\nПрошивки для $DIR:\n"
+    printf "\nFirmware for $DIR:\n"
     i=1
     for FILE in $BIN_FILES; do
       printf "${CYAN}$i. $FILE${NC}\n"
       i=$((i + 1))
     done
-    printf "${CYAN}00. Выход в главное меню\n${NC}"
+    printf "${CYAN}00. Exit to the main menu\n${NC}"
     echo ""
-    read -p "Выберите прошивку: " FILE_NUM
+    read -p "Select the firmware: " FILE_NUM
     if [ "$FILE_NUM" = "00" ]; then
       main_menu
     fi
@@ -354,36 +355,36 @@ ota_update() {
       DOWNLOAD_PATH="$TMP_DIR"
       use_mount=false
     fi
-    printf "\nЗагружаю прошивку в $DOWNLOAD_PATH...\n"
+    printf "\nUploading firmware to $DOWNLOAD_PATH...\n"
 
     mkdir -p "$DOWNLOAD_PATH"
-    if ! curl -L -s "https://raw.githubusercontent.com/$USERNAME/$REPO/master/$(echo "$DIR" | sed 's/ /%20/g')/$(echo "$FILE" | sed 's/ /%20/g')" --output "$DOWNLOAD_PATH/$FILE"; then
-      print_message "Не удалось загрузить файл $FILE. Проверьте свободное место" "$RED"
+    if ! curl -L -s "https://raw.githubusercontent.com/$OTA_USERNAME/$REPO/master/$(echo "$DIR" | sed 's/ /%20/g')/$(echo "$FILE" | sed 's/ /%20/g')" --output "$DOWNLOAD_PATH/$FILE"; then
+      print_message "Failed to download file $FILE. Check free space" "$RED"
       main_menu
     fi
 
     if [ ! -f "$DOWNLOAD_PATH/$FILE" ]; then
-      printf "${RED}Файл $FILE не был загружен/найден.${NC}\n"
-      read -n 1 -s -r -p "Для возврата нажмите любую клавишу..."
+      printf "${RED} The file $FILE was not downloaded/found.${NC}\n"
+      read -n 1 -s -r -p "Press any key to return..."
     fi
 
-    curl -L -s "https://raw.githubusercontent.com/$USERNAME/$REPO/master/$(echo "$DIR" | sed 's/ /%20/g')/md5sum" --output "$DOWNLOAD_PATH/md5sum"
+    curl -L -s "https://raw.githubusercontent.com/$OTA_USERNAME/$REPO/master/$(echo "$DIR" | sed 's/ /%20/g')/md5sum" --output "$DOWNLOAD_PATH/md5sum"
 
     MD5SUM=$(grep "$FILE" "$DOWNLOAD_PATH/md5sum" | awk '{print $1}' | tr '[:upper:]' '[:lower:]')
     FILE_MD5SUM=$(md5sum "$DOWNLOAD_PATH/$FILE" | awk '{print $1}' | tr '[:upper:]' '[:lower:]')
 
     if [ "$MD5SUM" != "$FILE_MD5SUM" ]; then
-      printf "${RED}MD5 хеш не совпадает.${NC}"
-      echo "Ожидаемый: $MD5SUM"
-      echo "Фактический: $FILE_MD5SUM"
+      printf "${RED}MD5 hash doesn't match.${NC}"
+      echo "Expected: $MD5SUM"
+      echo "Actual: $FILE_MD5SUM"
       rm -f "$DOWNLOAD_PATH/$FILE"
       return
     fi
 
-    printf "${GREEN}MD5 хеш совпадает${NC}\n"
+    printf "${GREEN}MD5 hash match${NC}\n"
     rm -f "$DOWNLOAD_PATH/md5sum"
     echo ""
-    read -p "Выбран $FILE для обновления, всё верно? (y/n) " CONFIRM
+    read -p "Selected $FILE to update, is everything correct? (y/n) " CONFIRM
     case "$CONFIRM" in
     y | Y)
       update_firmware_block "$DOWNLOAD_PATH/$FILE" "$use_mount"
@@ -393,7 +394,7 @@ ota_update() {
       ;;
     esac
     rm -f "$DOWNLOAD_PATH/$FILE"
-    print_message "Перезагружаю устройство..." "${CYAN}"
+    print_message "Rebooting the device..." "${CYAN}"
     sleep 1
     reboot
     main_menu
@@ -418,7 +419,7 @@ update_firmware_block() {
       sleep 1
     else
       result=$(echo "$mtdSlot" | grep -oP '.*(?=:)' | grep -oE '[0-9]+')
-      echo "$partition на mtd${result} разделе, обновляю..."
+      echo "$partition on mtd${result} partition, updating..."
       dd if="$firmware" of="/dev/mtdblock$result" conv=fsync
       wait
       echo ""
@@ -434,12 +435,12 @@ firmware_manual_update() {
   ram_size=$(get_ram_size)
 
   if [ "$ram_size" -lt $MINRAMSIZE ]; then
-    print_message "Для этого устройства обновление доступно только из накопителя с установленной Entware" "$CYAN"
+    print_message "For this device, the update is only available from a drive with Entware installed" "$CYAN"
     selected_drive="$STORAGE_DIR"
     use_mount=true
   else
     output=$(mount)
-    identify_external_drive "Выберите накопитель с размещённым файлом обновления:"
+    identify_external_drive "Select the drive where the update file is located:"
     selected_drive="$selected_drive"
     use_mount=false
   fi
@@ -448,35 +449,35 @@ firmware_manual_update() {
   count=$(echo "$files" | wc -l)
 
   if [ -z "$files" ]; then
-    print_message "Файл обновления не найден на накопителе" "$RED"
+    print_message "Update file not found on the drive" "$RED"
     echo ""
-    read -n 1 -s -r -p "Для возврата нажмите любую клавишу..."
+    read -n 1 -s -r -p "Press any key to return..."
     main_menu
   fi
 
   echo "$files" | awk '{print NR".", substr($0, 10)}'
-  printf "${CYAN}00. Выход в главное меню${NC}\n"
+  printf "${CYAN}00. Exit to main menu${NC}\n"
   echo ""
-  read -p "Выберите файл обновления (от 1 до $count): " choice
+  read -p "Select the update file (1 to $count): " choice
   choice=$(echo "$choice" | tr -d ' \n\r')
   if [ "$choice" = "00" ]; then
     main_menu
   fi
   if [ "$choice" -lt 1 ] || [ "$choice" -gt "$count" ]; then
-    print_message "Неверный выбор файла" "$RED"
-    read -n 1 -s -r -p "Для возврата нажмите любую клавишу..."
+    print_message "Incorrect file selection" "$RED"
+    read -n 1 -s -r -p "Press any key to return..."
     main_menu
   fi
 
   Firmware=$(echo "$files" | awk "NR==$choice")
   FirmwareName=$(basename "$Firmware")
   echo ""
-  read -p "Выбран $FirmwareName для обновления, всё верно? (y/n) " item_rc1
+  read -p "Selected $FirmwareName to update, is everything correct? (y/n) " item_rc1
   item_rc1=$(echo "$item_rc1" | tr -d ' \n\r')
   case "$item_rc1" in
   y | Y)
     update_firmware_block "$Firmware" "$use_mount"
-    read -p "Удалить файл обновления? (y/n) " item_rc2
+    read -p "Delete the update file? (y/n) " item_rc2
     item_rc2=$(echo "$item_rc2" | tr -d ' \n\r')
     case "$item_rc2" in
     y | Y)
@@ -489,7 +490,7 @@ firmware_manual_update() {
       ;;
     *) ;;
     esac
-    print_message "Перезагружаю устройство..." "${CYAN}"
+    print_message "Rebooting the device..." "${CYAN}"
     sleep 1
     reboot
     ;;
@@ -499,15 +500,15 @@ firmware_manual_update() {
 
 backup_block() {
   output=$(mount)
-  identify_external_drive "Выберите накопитель:"
+  identify_external_drive "Select the drive:"
   output=$(cat /proc/mtd)
-  printf "${GREEN}Доступные разделы:${NC}\n"
+  printf "${GREEN}Available partitions:${NC}\n"
   echo "$output" | awk 'NR>1 {print $0}'
-  printf "${CYAN}00. Выход в главное меню\n"
-  printf "99. Бэкап всех разделов${NC}"
+  printf "${CYAN}00. Exit to the main menu\n"
+  printf "99. Backup all partitions${NC}"
   echo -e "\n"
   folder_path="$selected_drive/backup$(date +%Y-%m-%d_%H-%M-%S)"
-  read -p "Укажите номер раздела(ов) разделив пробелами: " choice
+  read -p "Indicate the number of the partition(s) separated by spaces: " choice
   echo ""
   choice=$(echo "$choice" | tr -d '\n\r')
 
@@ -523,7 +524,7 @@ backup_block() {
     output_all_mtd=$(cat /proc/mtd | grep -c "mtd")
     for i in $(seq 0 $(($output_all_mtd - 1))); do
       mtd_name=$(echo "$output" | awk -v i=$i 'NR==i+2 {print substr($0, index($0,$4))}' | grep -oP '(?<=\").*(?=\")')
-      echo "Копирую mtd$i.$mtd_name.bin..."
+      echo "Copying mtd$i.$mtd_name.bin..."
       if [ $valid_parts -eq 0 ]; then
         mkdir -p "$folder_path"
         valid_parts=1
@@ -531,9 +532,9 @@ backup_block() {
 
       if ! cat "/dev/mtdblock$i" >"$folder_path/mtd$i.$mtd_name.bin"; then
         error_occurred=1
-        print_message "Ошибка: Недостаточно места для сохранения mtd$i.$mtd_name.bin" "$RED"
+        print_message "Error: Not enough space to save mtd$i.$mtd_name.bin" "$RED"
         echo ""
-        read -n 1 -s -r -p "Для возврата нажмите любую клавишу..."
+        read -n 1 -s -r -p "Press any key to return..."
         break
       fi
       wait
@@ -552,13 +553,13 @@ backup_block() {
         valid_parts=1
       fi
 
-      echo "Выбран mtd$part.$selected_mtd.bin, копирую..."
+      echo "Selected mtd$part.$selected_mtd.bin, copying..."
       sleep 1
       if ! dd if="/dev/mtd$part" of="$folder_path/mtd$part.$selected_mtd.bin" 2>&1; then
         error_occurred=1
-        print_message "Ошибка: Недостаточно места для сохранения mtd$part.$selected_mtd.bin" "$RED"
+        print_message "Error: Not enough space to save mtd$part.$selected_mtd.bin" "$RED"
         echo ""
-        read -n 1 -s -r -p "Для возврата нажмите любую клавишу..."
+        read -n 1 -s -r -p "Press any key to return..."
         break
       fi
       wait
@@ -567,24 +568,24 @@ backup_block() {
   fi
 
   if [ -n "$non_existent_parts" ]; then
-    print_message "Ошибка: Раздела${non_existent_parts} не существует!" "$RED"
+    print_message "Error: Partitions${non_existent_parts} do not exist!" "$RED"
     error_occurred=1
   fi
 
   if [ "$error_occurred" -eq 0 ] && [ $valid_parts -eq 1 ]; then
-    print_message "Раздел(ы) успешно сохранены в $folder_path" "$GREEN"
+    print_message "Partition(s) successfully saved to $folder_path" "$GREEN"
   else
-    print_message "Ошибки при сохранении раздел(ов). Проверьте вывод выше." "$RED"
+    print_message "Errors saving partition(s). Check the output above." "$RED"
   fi
 
-  read -n 1 -s -r -p "Для возврата нажмите любую клавишу..."
+  read -n 1 -s -r -p "Press any key to return..."
   main_menu
 }
 
 backup_entware() {
   output=$(mount)
-  identify_external_drive "Выберите накопитель:" "(может не хватить места)" "true"
-  print_message "Выполняю копирование..." "$CYAN"
+  identify_external_drive "Select the drive:" "(there might not be enough space)" "true"
+  print_message "Copying..." "$CYAN"
 
   arch=$(get_architecture)
 
@@ -593,40 +594,40 @@ backup_entware() {
   wait
 
   if echo "$backup_output" | grep -q "No space left on device"; then
-    print_message "Бэкап не выполнен, проверьте свободное место" "$RED"
+    print_message "Backup failed, check free space" "$RED"
     echo ""
-    read -n 1 -s -r -p "Для возврата нажмите любую клавишу..."
+    read -n 1 -s -r -p "Press any key to return..."
   else
-    print_message "Бэкап успешно скопирован в $backup_file" "$GREEN"
-    read -n 1 -s -r -p "Для возврата нажмите любую клавишу..."
+    print_message "Backup successfully copied to $backup_file" "$GREEN"
+    read -n 1 -s -r -p "Press any key to return..."
   fi
   main_menu
 }
 
 rewrite_block() {
   output=$(mount)
-  identify_external_drive "Выберите накопитель с размещённым файлом:"
+  identify_external_drive "Select the drive where the file is located:"
   files=$(find $selected_drive -name '*.bin' -size +64k -size -30M)
   count=$(echo "$files" | wc -l)
   if [ -z "$files" ]; then
-    print_message "Bin файл не найден в выбранном хранилище" "$RED"
+    print_message "Bin file not found in the selected repository" "$RED"
     echo ""
-    read -n 1 -s -r -p "Для возврата нажмите любую клавишу..."
+    read -n 1 -s -r -p "Press any key to return..."
     main_menu
   fi
   echo ""
-  echo "Доступные файлы:"
+  echo "Available files:"
   echo "$files" | awk '{print NR".", substr($0, 10)}'
-  printf "\n${CYAN}00. Выход в главное меню${NC}\n"
+  printf "\n${CYAN}00. Exit to main menu${NC}\n"
   echo ""
-  read -p "Выберите файл для замены: " choice
+  read -p "Select the file to be replaced: " choice
   choice=$(echo "$choice" | tr -d ' \n\r')
   if [ "$choice" = "00" ]; then
     main_menu
   fi
   if [ $choice -lt 1 ] || [ $choice -gt $count ]; then
-    print_message "Неверный выбор файла" "$RED"
-    read -n 1 -s -r -p "Для возврата нажмите любую клавишу..."
+    print_message "Incorrect file selection" "$RED"
+    read -n 1 -s -r -p "Press any key to return..."
     main_menu
   fi
 
@@ -635,17 +636,17 @@ rewrite_block() {
   echo ""
   output=$(cat /proc/mtd)
   echo "$output" | awk 'NR>1 {print $0}'
-  printf "${CYAN}00. Выход в главное меню${NC}\n"
-  printf "\n${GREEN}Выбран $mtdName для замены${NC}\n"
-  printf "\n${RED}Внимание! Загрузчик не перезаписывается!${NC}\n"
-  read -p "Выберите, какой раздел перезаписать (например для mtd2 это 2): " choice
+  printf "${CYAN}00. Exit to main menu${NC}\n"
+  printf "\n${GREEN}Selected $mtdName for replacement${NC}\n"
+  printf "\n${RED}WARNING! The bootloader is not overwritten! ${NC}\n"
+  read -p "Select which partition to overwrite (e.g. for mtd2 it is 2): " choice
   choice=$(echo "$choice" | tr -d ' \n\r')
   if [ "$choice" = "00" ]; then
     main_menu
   fi
   if [ "$choice" = "0" ]; then
-    print_message "Загрузчик не перезаписывается!" "$RED"
-    read -n 1 -s -r -p "Для возврата нажмите любую клавишу..."
+    print_message "The bootloader is not overwritten!" "$RED"
+    read -n 1 -s -r -p "Press any key to return..."
     main_menu
   fi
   selected_mtd=$(echo "$output" | awk -v i=$choice 'NR==i+2 {print substr($0, index($0,$4))}' | grep -oP '(?<=\").*(?=\")')
@@ -659,12 +660,12 @@ rewrite_block() {
     rewrite=$(dd if=$mtdFile of=/dev/mtdblock$choice)
     wait
     if echo "$rewrite" | grep -q "No space left on device"; then
-      print_message "Перезапись не выполнена, записываемый файл больше раздела" "$RED"
+      print_message "Overwrite failed, file to be written is larger than the partition" "$RED"
     else
-      print_message "Раздел успешно перезаписан" "$GREEN"
+      print_message "Partition successfully overwritten" "$GREEN"
     fi
     printf "${NC}"
-    read -r -p "Перезагрузить роутер? (y/n) " item_rc3
+    read -r -p "Reboot the router? (y/n) " item_rc3
     item_rc3=$(echo "$item_rc3" | tr -d ' \n\r')
     case "$item_rc3" in
     y | Y)
@@ -681,7 +682,7 @@ rewrite_block() {
     echo ""
     ;;
   esac
-  read -n 1 -s -r -p "Для возврата нажмите любую клавишу..."
+  read -n 1 -s -r -p "Press any key to return..."
   main_menu
 }
 
@@ -698,7 +699,7 @@ service_data_generator() {
   done
 
   if [ -n "$missing_packages" ]; then
-    read -p "Следующие пакеты отсутствуют:$missing_packages. Установить их? (y/n) " item_rc1
+    read -p "The following packages are missing:$missing_packages. Do you want to install them? (y/n) " item_rc1
     item_rc1=$(echo "$item_rc1" | tr -d ' \n\r')
     case "$item_rc1" in
     y | Y)
@@ -708,15 +709,15 @@ service_data_generator() {
       opkg install $missing_packages --nodeps
       for package in $missing_packages; do
         if ! opkg list-installed | grep -q "^$package"; then
-          print_message "Ошибка: пакет $package не установлен." "$RED"
-          read -n 1 -s -r -p "Для возврата нажмите любую клавишу..."
+          print_message "Error: package $package is not installed." "$RED"
+          read -n 1 -s -r -p "Press any key to return..."
           main_menu
         fi
       done
       ;;
     n | N)
-      print_message "Необходимые пакеты не установлены." "$RED"
-      read -n 1 -s -r -p "Для возврата нажмите любую клавишу..."
+      print_message "Necessary packages are not installed." "$RED"
+      read -n 1 -s -r -p "Press any key to return..."
       main_menu
       return
       ;;
@@ -726,7 +727,7 @@ service_data_generator() {
   if [ ! -f "$SCRIPT_PATH" ]; then
     curl -L -s "https://raw.githubusercontent.com/$USERNAME/$REPO/main/service_data_generator.py" --output "$SCRIPT_PATH"
     if [ $? -ne 0 ]; then
-      print_message "Ошибка загрузки скрипта $SCRIPT_PATH" "$RED"
+      print_message "Error loading $SCRIPT_PATH script" "$RED"
       return
     fi
   fi
@@ -737,9 +738,9 @@ service_data_generator() {
   if [ -n "$mtdSlot" ]; then
     dd if="/dev/mtd$mtdSlot" of="$folder_path/U-Config.bin" >/dev/null 2>&1
     if [ $? -eq 0 ]; then
-      print_message "Бэкап текущего U-Config сохранён в $folder_path" "$GREEN"
+      print_message "A backup of the current U-Config is saved to $folder_path" "$GREEN"
     else
-      print_message "Ошибка при создании бэкапа U-Config" "$RED"
+      print_message "Error creating U-Config backup" "$RED"
     fi
   fi
 
@@ -751,9 +752,9 @@ service_data_generator() {
 
   mtdFile=$(find "$folder_path" -type f -name 'U-Config_*.bin' | head -n 1)
   if [ -n "$mtdFile" ]; then
-    print_message "Новые сервисные данные сохранены в $mtdFile" "$GREEN"
+    print_message "The new service data is stored in $mtdFile" "$GREEN"
   fi
-  read -p "Продолжить замену? (y/n) " item_rc1
+  read -p "Confirm replacement? (y/n) " item_rc1
   item_rc1=$(echo "$item_rc1" | tr -d ' \n\r')
   case "$item_rc1" in
   y | Y)
@@ -761,19 +762,19 @@ service_data_generator() {
     dd if="$mtdFile" of="/dev/mtdblock$mtdSlot"
     if [ -n "$mtdSlot_res" ]; then
       echo ""
-      printf "${CYAN}Найден второй раздел, заменяю...${NC}"
+      printf "${CYAN}Found the second partition, replacing...${NC}"
       echo ""
       dd if="$mtdFile" of="/dev/mtdblock$mtdSlot_res"
     fi
     if [ $? -eq 0 ]; then
-      print_message "Сервисные данные успешно заменены" "$GREEN"
+      print_message "Service data successfully replaced" "$GREEN"
     else
-      print_message "Ошибка при выполнении замены" "$RED"
+      print_message "Error performing replacement" "$RED"
     fi
     ;;
   esac
   if [ -z "$target_flag" ]; then
-    read -p "Перезагрузить роутер? (y/n) " item_rc2
+    read -p "Reboot the router? (y/n) " item_rc2
     item_rc2=$(echo "$item_rc2" | tr -d ' \n\r')
     case "$item_rc2" in
     y | Y)
@@ -785,7 +786,7 @@ service_data_generator() {
       ;;
     *) ;;
     esac
-    echo "Возврат в главное меню..."
+    echo "Return to the main menu..."
     sleep 1
     main_menu
   fi
