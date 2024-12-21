@@ -1,28 +1,26 @@
 # KeenKit
-### Многофункциональный скрипт, упрощающий взаимодействие с роутером на портированной KeeneticOS
+### Multifunctional script that simplifies interaction with the router on the ported KeeneticOS
 
-![image_2024-10-06_10-58-00](https://github.com/user-attachments/assets/aca16161-29c0-4eeb-8e08-63216f740bd2)   
+# Installation
+1. Via `SSH` get into the pre-installed [Entware](https://keen-prt.github.io/wiki/helpful/entware)
 
-# Установка
-1. Через `SSH` попасть в заранее устанлвенный [Entware](https://keen-prt.github.io/wiki/helpful/entware)
-
-2. Установить скрипт
+2. Install the script
 ```
-opkg update && opkg install curl && curl -L -s "https://raw.githubusercontent.com/spatiumstas/KeenKit/main/install.sh" > /tmp/install.sh && sh /tmp/install.sh
+opkg update && opkg install curl && curl -L -s "https://raw.githubusercontent.com/madcrow/KeenKit/main/install.sh" > /tmp/install.sh && sh /tmp/install.sh
 ```
-Запуск через:
->keenkit, KeenKit или /opt/keenkit.sh
+Launch via:
+>keenkit, KeenKit or /opt/keenkit.sh
 
-#  Описание команд
-- ## **Обновить прошивку**
-    - Ищет файл с расширением .bin на встроенном/внешнем накопителе с последующей установкой на разделы Firmware или Firmware_1/Firmware_2
-- ## **Бэкап разделов**
-    - Бэкапит раздел/ы на выбранный накопитель
-- ## **Бэкап Entware**
-    - Создаёт полный бэкап накопителя, из которого запущен скрипт. Его можно использовать как установочный при [новой установке](/wiki/helpful/entware).
-- ## **Заменить раздел**
-    - Замена раздела системы на раздел, выбранный пользователем
+# Description of commands
+- ## **Update firmware**
+    - Searches for a file with the .bin extension on the built-in/external storage device and then installs it on the Firmware or Firmware_1/Firmware_2 partitions
+- ## **Backup partitions**
+    - Backup partitions/s to the selected drive
+- ## **Entware Backup**
+    - Creates a full backup of the drive from which the script is launched.
+- ## **Replace Partition**
+    - Replace a system partition with a partition selected by the user
 - ## **OTA Update**
-    - Онлайн обновление/даунгрейд портированных прошивок Keenetic
-- ## **Заменить сервисные данные**
-    - Создаёт новый U-Config с изменёнными сервисными данными, а так же перезаписывает текущий
+    - Online upgrade/downgrade of ported Keenetic firmware
+- ## **Replace service data**
+    - Creates a new U-Config with modified service data, and also overwrites the current one
