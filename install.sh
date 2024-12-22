@@ -1,5 +1,6 @@
 #!/bin/sh
 
+USERNAME="madcrow"
 REPO="KeenKit"
 SCRIPT="keenkit.sh"
 TMP_DIR="/tmp"
@@ -10,7 +11,7 @@ if ! opkg list-installed | grep -q "^curl"; then
   opkg install curl
 fi
 
-curl -L -s "https://raw.githubusercontent.com/spatiumstas/$REPO/main/$SCRIPT" --output $TMP_DIR/$SCRIPT
+curl -L -s "https://raw.githubusercontent.com/$USERNAME/$REPO/main/$SCRIPT" --output $TMP_DIR/$SCRIPT
 mv "$TMP_DIR/$SCRIPT" "$OPT_DIR/$SCRIPT"
 chmod +x $OPT_DIR/$SCRIPT
 cd $OPT_DIR/bin
