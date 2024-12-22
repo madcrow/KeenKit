@@ -156,7 +156,7 @@ EOF
   if [ -z "$labels" ]; then
     selected_drive="$STORAGE_DIR"
     if [ "$special_message" = "true" ]; then
-      read -p "Only found embedded storage $message2, continue backup? (y/n) " item_rc1
+      read -p "Only internal storage found $message2, continue backup? (y/n) " item_rc1
       item_rc1=$(echo "$item_rc1" | tr -d ' \n\r')
       case "$item_rc1" in
       y | Y) ;;
@@ -610,7 +610,7 @@ rewrite_block() {
   files=$(find $selected_drive -name '*.bin' -size +64k -size -30M)
   count=$(echo "$files" | wc -l)
   if [ -z "$files" ]; then
-    print_message "Bin file not found in the selected repository" "$RED"
+    print_message "No .bin files found on the selected drive" "$RED"
     echo ""
     read -n 1 -s -r -p "Press any key to return..."
     main_menu
